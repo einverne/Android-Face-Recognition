@@ -42,7 +42,7 @@ public class CustomView extends View {
         super.onDraw(canvas);
         if ((mBitmap != null) && (mFaces != null)) {
             double scale = drawBitmap(canvas);
-//            drawFaceRectangle(canvas, scale);
+            drawFaceRectangle(canvas, scale);
 //            drawFaceAnnotations(canvas, scale);
             detectFaceCharacteristics(canvas, scale);
         }
