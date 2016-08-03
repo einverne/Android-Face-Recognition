@@ -5,18 +5,25 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
-import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
-import com.google.android.gms.vision.face.FaceDetector;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,16 +31,22 @@ public class MainActivity extends AppCompatActivity {
     private int faceCount = 0;
     private Bitmap selectedBitmap;
 
+    TextView tvFaceCount;
+    CustomView overlay;
+    private int failedCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        tvFaceCount = (TextView) findViewById(R.id.faceCount);
+        overlay = (CustomView) findViewById(R.id.customView);
+
         InputStream stream = getResources().openRawResource(R.raw.image04);
-        Bitmap bitmap = BitmapFactory.decodeStream(stream);
+        final Bitmap bitmap = BitmapFactory.decodeStream(stream);
 
-        updateUI(bitmap);
-
+        detectFaces(bitmap);
     }
 
     @Override
@@ -60,6 +73,21 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_settings:
 
                 break;
+            case R.id.action_opendir:
+                ArrayList<File> pictures = getFileFromDir(new File("/sdcard/facedetect"));
+                for (int i = 0; i < pictures.size(); i++) {
+                    File pic = pictures.get(i);
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            detectFaces(bitmap);
+                        }
+                    }, 2000 * i);
+                }
+                break;
             default:
                 break;
         }
@@ -79,30 +107,36 @@ public class MainActivity extends AppCompatActivity {
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
-                    updateUI(selectedBitmap);
+                    detectFaces(selectedBitmap);
                 }
         }
     }
 
-    private void updateUI(Bitmap bitmap) {
-        FaceDetector detector = new FaceDetector.Builder(getApplicationContext())
-                .setTrackingEnabled(false)
-                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
-                .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
-                .build();
+    private void detectFaces(final Bitmap bitmap) {
+        final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
+        faceDetect.detectWithBitmap(bitmap, new FaceDetect.DetectListener() {
+            @Override
+            public void onSuccess() {
+                SparseArray<Face> faces = faceDetect.getDetectFaces();
+                faceCount = faces.size();
+                updateUI(bitmap, faces);
 
-        // Create a frame from the bitmap and run face detection on the frame.
-        Frame frame = new Frame.Builder().setBitmap(bitmap).build();
-        SparseArray<Face> faces = detector.detect(frame);
-        faceCount = faces.size();
+                if (faceCount == 0) {
+                    saveToLocal(bitmap);
+                }
+            }
 
-        TextView tvFaceCount = (TextView) findViewById(R.id.faceCount);
+            @Override
+            public void onFail() {
+
+            }
+        });
+    }
+
+    private void updateUI(final Bitmap bitmap, SparseArray<Face> faces) {
         tvFaceCount.setText(faceCount + " faces detected");
 
-        CustomView overlay = (CustomView) findViewById(R.id.customView);
         overlay.setContent(bitmap, faces);
-
-        detector.release();
     }
 
     // http://stackoverflow.com/questions/2507898/how-to-pick-an-image-from-gallery-sd-card-for-my-app
@@ -136,4 +170,49 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private ArrayList<File> getFileFromDir(File localDir) {
+        ArrayList result = new ArrayList();
+        File[] files = localDir.listFiles();
+        List filesDirs = Arrays.asList(files);
+        Iterator filesIter = filesDirs.iterator();
+        File file = null;
+        while (filesIter.hasNext()) {
+            file = (File) filesIter.next();
+            result.add(file);
+        }
+        return result;
+    }
+
+    /* Checks if external storage is available for read and write */
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
+
+    private void saveToLocal(Bitmap bitmap) {
+        File fileFailedDir = new File("/sdcard/facedetectfailed");
+        if (!fileFailedDir.exists()) {
+            fileFailedDir.mkdir();
+        }
+        File filename = new File(fileFailedDir, failedCount + ".png");
+        failedCount++;
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(filename);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
