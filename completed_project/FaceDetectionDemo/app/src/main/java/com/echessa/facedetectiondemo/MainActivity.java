@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap selectedBitmap;
 
     TextView tvFaceCount;
+    TextView picIndex;
     CustomView overlay;
     private int failedCount = 0;
 
@@ -41,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         tvFaceCount = (TextView) findViewById(R.id.faceCount);
+        picIndex = (TextView) findViewById(R.id.picIndex);
         overlay = (CustomView) findViewById(R.id.customView);
 
         InputStream stream = getResources().openRawResource(R.raw.image04);
@@ -75,8 +77,10 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case R.id.action_opendir:
                 ArrayList<File> pictures = getFileFromDir(new File("/sdcard/facedetect"));
+                final int totalIndex = pictures.size();
+                final int[] picInd = {0};
                 for (int i = 0; i < pictures.size(); i++) {
-                    File pic = pictures.get(i);
+                    final File pic = pictures.get(i);
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
                     Handler handler = new Handler();
@@ -84,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             detectFaces(bitmap);
+                            picIndex.setText("detect index: " + picInd[0] + " / " + totalIndex);
+                            picInd[0]++;
                         }
                     }, 2000 * i);
                 }
@@ -135,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateUI(final Bitmap bitmap, SparseArray<Face> faces) {
         tvFaceCount.setText(faceCount + " faces detected");
-
         overlay.setContent(bitmap, faces);
     }
 
