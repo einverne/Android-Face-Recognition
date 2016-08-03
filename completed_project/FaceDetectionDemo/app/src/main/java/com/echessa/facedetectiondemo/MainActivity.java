@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,10 +17,12 @@ import android.widget.TextView;
 import com.google.android.gms.vision.face.Face;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -27,7 +30,10 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+
     private static final int SELECT_PHOTO = 100;
+    private static final String TAG = "EV_TAG";
+    private ArrayList<File> pictures;
     private int faceCount = 0;
     private Bitmap selectedBitmap;
 
@@ -76,23 +82,7 @@ public class MainActivity extends AppCompatActivity {
 
                 break;
             case R.id.action_opendir:
-                ArrayList<File> pictures = getFileFromDir(new File("/sdcard/facedetect"));
-                final int totalIndex = pictures.size();
-                final int[] picInd = {0};
-                for (int i = 0; i < pictures.size(); i++) {
-                    final File pic = pictures.get(i);
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
-                    Handler handler = new Handler();
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            detectFaces(bitmap);
-                            picIndex.setText("detect index: " + picInd[0] + " / " + totalIndex);
-                            picInd[0]++;
-                        }
-                    }, 2000 * i);
-                }
+                openDir();
                 break;
             default:
                 break;
@@ -100,6 +90,14 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    private void openDir() {
+        pictures = getFileFromDir(new File("/sdcard/facedetect1"));
+
+        detectNext();
+    }
+
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -120,28 +118,78 @@ public class MainActivity extends AppCompatActivity {
 
     private void detectFaces(final Bitmap bitmap) {
         final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
-        faceDetect.detectWithBitmap(bitmap, new FaceDetect.DetectListener() {
+//        faceDetect.detectWithBitmap(bitmap, new FaceDetect.DetectListener() {
+//            @Override
+//            public void onSuccess() {
+//                SparseArray<Face> faces = faceDetect.getDetectFaces();
+//                faceCount = faces.size();
+//                updateUI(bitmap, faces);
+//                faceCount = faceDetect.getFacesCount();
+//                Log.d(TAG, "detect success face count " + faceCount);
+//                if (faceCount == 0) {
+//                    saveToLocal("/sdcard/facedetectfailed", bitmap);
+//                } else {
+//                    saveToLocal("/sdcard/facedetectsuccess", bitmap);
+//                }
+//            }
+//
+//            @Override
+//            public void onFail() {
+//
+//            }
+//        });
+
+    }
+
+    private void detectNext() {
+        if (pictures.size() > 0) {
+            final File pic = pictures.remove(0);
+//                    BitmapFactory.Options options = new BitmapFactory.Options();
+//                    final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
+
+            detectFaces(pic);
+        }
+    }
+
+    private void detectFaces(final File file) {
+        final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
+        faceDetect.detectWithFile(file, new FaceDetect.DetectListener() {
             @Override
             public void onSuccess() {
-                SparseArray<Face> faces = faceDetect.getDetectFaces();
-                faceCount = faces.size();
-                updateUI(bitmap, faces);
-
+                faceCount = faceDetect.getFacesCount();
+                Log.d(TAG, "detect success face count " + faceCount);
                 if (faceCount == 0) {
-                    saveToLocal(bitmap);
+                    saveToLocal("/sdcard/facedetectfailed", file);
+                } else {
+                    saveToLocal("/sdcard/facedetectsuccess", file);
                 }
+                faceCount = 0;
+                Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        detectNext();
+                    }
+                }, 2000);
             }
 
             @Override
             public void onFail() {
-
+                Log.d(TAG, "detect failed face count " + faceCount);
+                Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        detectNext();
+                    }
+                }, 2000);
             }
         });
     }
 
     private void updateUI(final Bitmap bitmap, SparseArray<Face> faces) {
         tvFaceCount.setText(faceCount + " faces detected");
-        overlay.setContent(bitmap, faces);
+//        overlay.setContent(bitmap, faces);
     }
 
     // http://stackoverflow.com/questions/2507898/how-to-pick-an-image-from-gallery-sd-card-for-my-app
@@ -197,8 +245,32 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private void saveToLocal(Bitmap bitmap) {
-        File fileFailedDir = new File("/sdcard/facedetectfailed");
+    /**
+     * save fileIn to path with same name
+     * @param path
+     * @param fileIn
+     */
+    private void saveToLocal(String path, File fileIn) {
+        File fileDst = new File(path + "/" + fileIn.getName());
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+            in = new FileInputStream(fileIn);
+            out = new FileOutputStream(fileDst);
+            byte[] buf = new byte[2048];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            in.close();
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveToLocal(String path, Bitmap bitmap) {
+        File fileFailedDir = new File(path);
         if (!fileFailedDir.exists()) {
             fileFailedDir.mkdir();
         }
@@ -207,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
         FileOutputStream out = null;
         try {
             out = new FileOutputStream(filename);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 50, out);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } finally {
@@ -219,5 +291,6 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+        bitmap.recycle();
     }
 }
