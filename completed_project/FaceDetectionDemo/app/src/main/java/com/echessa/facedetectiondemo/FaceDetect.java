@@ -2,6 +2,7 @@ package com.echessa.facedetectiondemo;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.util.SparseArray;
 import android.widget.TextView;
@@ -9,6 +10,8 @@ import android.widget.TextView;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
+
+import java.io.File;
 
 /**
  * Created by einverne on 16/8/3.
@@ -74,8 +77,17 @@ public class FaceDetect {
         detectUsingGms(bitmap);
     }
 
+    /**
+     * give local path like /sdcard/facedetect/1.png
+     * @param localpath local path
+     */
     public void detectWithFile(String localpath) {
-
+        File filepath = new File(localpath);
+        if (filepath.exists()) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            Bitmap bitmap = BitmapFactory.decodeFile(filepath.getAbsolutePath(), options);
+            detectUsingGms(bitmap);
+        }
     }
 
     public void detectWithUrl(String url) {
