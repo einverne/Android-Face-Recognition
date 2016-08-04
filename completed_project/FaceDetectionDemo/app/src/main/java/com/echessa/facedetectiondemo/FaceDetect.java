@@ -7,6 +7,7 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.widget.TextView;
 
+import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
@@ -23,8 +24,17 @@ public class FaceDetect {
     private Context context;
     private DetectListener listener;
 
-    private SparseArray<Face> faces;
-    private int facesCount;
+    private SparseArray<Face> faces;            // 保存GMS中返回数据
+    private int facesCount;                     // 保存识别出的人脸数量
+    DetectProvider detectProvider = DetectProvider.PlayService;              // 人脸识别提供商
+
+    private FaceDetector detector;
+
+    public enum DetectProvider {
+        AndroidMedia,
+        PlayService,
+        FacePlus
+    }
 
     public enum DetectType {
         Face,
@@ -41,25 +51,34 @@ public class FaceDetect {
     }
 
     private void detectUsingGms(Bitmap bitmap) {
-        FaceDetector detector = new FaceDetector.Builder(context)
+        detector = new FaceDetector.Builder(context)
                 .setTrackingEnabled(false)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
                 .build();
 
+        // This is a temporary workaround for a bug in the face detector with respect to operating
+        // on very small images.  This will be fixed in a future release.  But in the near term, use
+        // of the SafeFaceDetector class will patch the issue.
+        Detector<Face> safeDetector = new SafeFaceDetector(detector);
+
         // Create a frame from the bitmap and run face detection on the frame.
         Frame frame = new Frame.Builder().setBitmap(bitmap).build();
 
-        faces = detector.detect(frame);
+        faces = safeDetector.detect(frame);
         if (listener != null ) {
             listener.onSuccess();
         }
-        detector.release();
     }
 
+    /**
+     * 使用 android.media 包中识别人脸
+     * @param bitmap
+     */
     private void detectUsingNative(Bitmap bitmap) {
         if (null == bitmap) {
             Log.d(TAG, "detect local error no bitmap");
+            return;
         }
         android.media.FaceDetector faceDetector = new android.media.FaceDetector(bitmap.getWidth(), bitmap.getHeight(), 3);
         android.media.FaceDetector.Face faces[] = new android.media.FaceDetector.Face[3];
@@ -74,7 +93,17 @@ public class FaceDetect {
 
     public void detectWithBitmap(Bitmap bitmap, DetectListener listener) {
         this.listener = listener;
-        detectUsingGms(bitmap);
+        switch (detectProvider) {
+            case PlayService:
+                detectUsingGms(bitmap);
+                break;
+            case AndroidMedia:
+                detectUsingNative(bitmap);
+                break;
+            case FacePlus:
+
+                break;
+        }
     }
 
     /**
@@ -104,6 +133,7 @@ public class FaceDetect {
 
     public void cancel() {
         listener = null;
+        detector.release();
 
     }
 }

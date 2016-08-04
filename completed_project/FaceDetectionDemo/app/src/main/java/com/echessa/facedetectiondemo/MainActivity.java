@@ -1,23 +1,31 @@
 package com.echessa.facedetectiondemo;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import com.github.angads25.filepicker.controller.DialogSelectionListener;
+import com.github.angads25.filepicker.model.DialogConfigs;
+import com.github.angads25.filepicker.model.DialogProperties;
+import com.github.angads25.filepicker.view.FilePickerDialog;
 import com.google.android.gms.vision.face.Face;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -32,9 +40,11 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap selectedBitmap;
 
     TextView tvFaceCount;
-    TextView picIndex;
+    TextView tvPicIndex;
     CustomView overlay;
     private int failedCount = 0;
+
+    private ArrayList<File> picturesToDetect = new ArrayList<>();;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,13 +52,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         tvFaceCount = (TextView) findViewById(R.id.faceCount);
-        picIndex = (TextView) findViewById(R.id.picIndex);
+        tvPicIndex = (TextView) findViewById(R.id.picIndex);
         overlay = (CustomView) findViewById(R.id.customView);
 
         InputStream stream = getResources().openRawResource(R.raw.image04);
         final Bitmap bitmap = BitmapFactory.decodeStream(stream);
 
-        detectFaces(bitmap);
+//        detectFaces(bitmap);
     }
 
     @Override
@@ -76,23 +86,23 @@ public class MainActivity extends AppCompatActivity {
 
                 break;
             case R.id.action_opendir:
-                ArrayList<File> pictures = getFileFromDir(new File("/sdcard/facedetect"));
-                final int totalIndex = pictures.size();
-                final int[] picInd = {0};
-                for (int i = 0; i < pictures.size(); i++) {
-                    final File pic = pictures.get(i);
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
-                    Handler handler = new Handler();
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            detectFaces(bitmap);
-                            picIndex.setText("detect index: " + picInd[0] + " / " + totalIndex);
-                            picInd[0]++;
-                        }
-                    }, 2000 * i);
-                }
+                DialogProperties properties = new DialogProperties();
+                properties.selection_mode = DialogConfigs.SINGLE_MODE;
+                properties.selection_type = DialogConfigs.DIR_SELECT;
+                properties.root = new File("/sdcard/");
+                properties.extensions = null;
+
+                FilePickerDialog dialog = new FilePickerDialog(MainActivity.this, properties);
+                dialog.setDialogSelectionListener(new DialogSelectionListener() {
+                    @Override
+                    public void onSelectedFilePaths(String[] files) {
+                        if (files.length <= 0) return;
+                        addFileFromDir(new File(files[0]));
+                        detectFaces();
+                    }
+                });
+                dialog.show();
+
                 break;
             default:
                 break;
@@ -108,17 +118,30 @@ public class MainActivity extends AppCompatActivity {
             case SELECT_PHOTO:
                 if (resultCode == RESULT_OK) {
                     Uri selectedImage = data.getData();
-                    try {
-                        selectedBitmap = decodeUri(selectedImage);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    detectFaces(selectedBitmap);
+                    picturesToDetect.add(new File(getPath(selectedImage)));
+                    detectFaces();
                 }
         }
     }
 
-    private void detectFaces(final Bitmap bitmap) {
+    public String getPath(Uri uri) {
+        String[] projection = { MediaStore.Images.Media.DATA };
+        Cursor cursor = managedQuery(uri, projection, null, null, null);
+        startManagingCursor(cursor);
+        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        cursor.moveToFirst();
+        return cursor.getString(column_index);
+    }
+
+    private void detectFaces() {
+        if (picturesToDetect.size() <= 0) {
+            return;
+        }
+        final File pic = picturesToDetect.remove(0);
+        tvPicIndex.setText("photo left: " + picturesToDetect.size());
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
+
         final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
         faceDetect.detectWithBitmap(bitmap, new FaceDetect.DetectListener() {
             @Override
@@ -127,13 +150,20 @@ public class MainActivity extends AppCompatActivity {
                 faceCount = faces.size();
                 updateUI(bitmap, faces);
 
-                if (faceCount == 0) {
-                    saveToLocal(bitmap);
-                }
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        detectFaces();
+                    }
+                }, 2000);
+//                if (faceCount == 0) {
+//                    saveToLocal(bitmap);
+//                }
             }
 
             @Override
             public void onFail() {
+                detectFaces();
 
             }
         });
@@ -175,17 +205,20 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private ArrayList<File> getFileFromDir(File localDir) {
-        ArrayList result = new ArrayList();
-        File[] files = localDir.listFiles();
+    private void addFileFromDir(File localDir) {
+        File[] files = localDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String filename) {
+                return filename.contains(".png") || filename.contains(".jpg");
+            }
+        });
         List filesDirs = Arrays.asList(files);
         Iterator filesIter = filesDirs.iterator();
         File file = null;
         while (filesIter.hasNext()) {
             file = (File) filesIter.next();
-            result.add(file);
+            picturesToDetect.add(file);
         }
-        return result;
     }
 
     /* Checks if external storage is available for read and write */
