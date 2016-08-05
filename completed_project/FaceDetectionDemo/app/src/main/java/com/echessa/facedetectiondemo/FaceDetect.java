@@ -70,6 +70,9 @@ public class FaceDetect {
      */
     private void detectUsingGms(Bitmap bitmap) {
         if (null == bitmap) {
+            if (listener != null) {
+                listener.onFail();
+            }
             return;
         }
         facesCount = 0;
@@ -116,8 +119,10 @@ public class FaceDetect {
      * @param bitmap
      */
     private void detectUsingNative(final Bitmap bitmap) {
-        if (null == bitmap) {
-            Log.d(TAG, "detect local error no bitmap");
+        if (null == bitmap || isRunning) {
+            if (listener != null) {
+                listener.onFail();
+            }
             return;
         }
         facesCount = 0;
