@@ -10,6 +10,8 @@ import android.util.SparseArray;
 import com.facepp.error.FaceppParseException;
 import com.facepp.http.HttpRequests;
 import com.facepp.http.PostParameters;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
@@ -23,6 +25,7 @@ import java.io.File;
 
 /**
  * Created by einverne on 16/8/3.
+ * FaceDetect using android.media, play service && face++
  */
 
 public class FaceDetect {
@@ -30,18 +33,18 @@ public class FaceDetect {
     private static final String FACEPLUSPLUS_APISECRET = "JzDjJ8QDjouiwDkDSTV4KYd8yrXcf01m";
 
     private static final String TAG = "EV_TAG";
-    private Context context;
+    private Context context;                    // used by Play Service
     private DetectListener listener;
 
     private int MEDIA_MAX_DETECT_FACE_NUMBER = 5;
     private SparseArray<Face> faces;            // 保存GMS中返回数据
     private int facesCount;                     // 保存识别出的人脸数量
-    private DetectProvider detectProvider = DetectProvider.AndroidMedia;              // 人脸识别提供商
+    private DetectProvider detectProvider = DetectProvider.FacePlus;              // 人脸识别提供商
 
-    private FaceDetector detector;
+    private FaceDetector detector;              // Play Service 人脸检测
 
     private Thread thread;
-    private boolean isRunning = false;
+    private boolean isRunning = false;          // 是否在检测中
 
     public enum DetectProvider {
         AndroidMedia,
@@ -56,6 +59,7 @@ public class FaceDetect {
 
     public interface DetectListener {
         void onSuccess();
+
         void onFail();
     }
 
@@ -66,7 +70,7 @@ public class FaceDetect {
     /**
      * 使用 Play Service 中人脸检测
      *
-     * @param bitmap
+     * @param bitmap Bitmap
      */
     private void detectUsingGms(Bitmap bitmap) {
         if (null == bitmap) {
@@ -116,7 +120,7 @@ public class FaceDetect {
     /**
      * 使用 android.media 包中识别人脸
      *
-     * @param bitmap
+     * @param bitmap Bitmap
      */
     private void detectUsingNative(final Bitmap bitmap) {
         if (null == bitmap || isRunning) {
@@ -153,38 +157,47 @@ public class FaceDetect {
     /**
      * 使用 Face++ 人脸检测
      *
-     * @param file
+     * @param file File
      */
     private void detectUsingFacePlus(File file) {
+        if (!file.exists() || isRunning) {
+            if (listener != null) {
+                listener.onFail();
+            }
+            return;
+        }
         final PostParameters parameters = new PostParameters();
         parameters.setImg(file);
         final Handler handler = new Handler();
+        facesCount = 0;
         thread = new Thread() {
             @Override
             public void run() {
+                boolean hasFace = false;
+                boolean detectSucceed = false;
                 Log.d("FacePlusDetect", "Detect Request :" + parameters.toString());
                 HttpRequests httpRequests = new HttpRequests(FACEPLUSPLUS_APIKEY, FACEPLUSPLUS_APISECRET, false, true);
-                JSONObject result = null;
-                boolean detectSucced = false;
+                JSONObject result;
                 try {
                     result = httpRequests.detectionDetect(parameters);
                     if (result != null) {
+                        detectSucceed = true;
                         JSONArray faces = result.getJSONArray("face");
                         if (faces != null && faces.length() > 0 && null != listener) {
                             // Has face!!
                             facesCount = faces.length();
-//                            hasFace = true;
+                            hasFace = true;
 //                            String genderStr = faces.getJSONObject(0).getJSONObject("attribute").getJSONObject("gender").getString("value");
 //                            gender = Gender.getValueOf(genderStr);
-                            detectSucced = true;
                         } else {
-//                            hasFace = false;
-//                            detectSucced = true;
+                            hasFace = false;
+//                            detectSucceed = true;
 //                            gender = Gender.OTHER;
                         }
 //                        Log.d("FacePlusDetect", "Detect Result : hasFace = " + hasFace + "; gender = " + gender.toString());
                     }
                 } catch (FaceppParseException e) {
+                    detectSucceed = false;
                     Log.d(TAG, "Detect FaceppParseException !");
                     e.printStackTrace();
                 } catch (JSONException e) {
@@ -195,7 +208,7 @@ public class FaceDetect {
                     e.printStackTrace();
                 }
 
-                if (detectSucced) {
+                if (detectSucceed) {
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -284,6 +297,12 @@ public class FaceDetect {
             return faces.size();
         }
         return facesCount;
+    }
+
+    public boolean isGooglePlayServiceAvailable() {
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+        int status = googleApiAvailability.isGooglePlayServicesAvailable(context);
+        return status == ConnectionResult.SUCCESS;
     }
 
     public void cancel() {

@@ -144,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
 //        options.inPreferredConfig = Bitmap.Config.RGB_565;
 //        final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
 
+        tvFaceCount.setText("loading");
         final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
         faceDetect.detectWithFile(pic, new FaceDetect.DetectListener() {
             @Override
@@ -161,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFail() {
-
+                tvFaceCount.setText("Failed");
             }
         });
 
