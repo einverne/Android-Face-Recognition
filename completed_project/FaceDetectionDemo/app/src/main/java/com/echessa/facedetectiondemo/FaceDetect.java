@@ -1,8 +1,10 @@
 package com.echessa.facedetectiondemo;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
 import android.util.SparseArray;
@@ -39,7 +41,7 @@ public class FaceDetect {
     private int MEDIA_MAX_DETECT_FACE_NUMBER = 5;
     private SparseArray<Face> faces;            // 保存GMS中返回数据
     private int facesCount;                     // 保存识别出的人脸数量
-    private DetectProvider detectProvider = DetectProvider.FacePlus;              // 人脸识别提供商
+    private DetectProvider detectProvider = DetectProvider.AndroidMedia;              // 人脸识别提供商
 
     private FaceDetector detector;              // Play Service 人脸检测
 
@@ -118,7 +120,14 @@ public class FaceDetect {
     }
 
     /**
-     * 使用 android.media 包中识别人脸
+     * There are some limitation in this 用android.media 包中识别人脸package.
+     * 使用使用使Face Detection API's input Bitmap must :
+     * <p/>
+     * 1. config with Config.RGB_565<br/>
+     * 2. Bitmap width must be even<br/>
+     * <p/>
+     * more details can be checked
+     * http://stackoverflow.com/q/17640206/1820217
      *
      * @param bitmap Bitmap
      */
@@ -261,6 +270,7 @@ public class FaceDetect {
      *
      * @param localFile local file
      */
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     public void detectWithFile(File localFile, DetectListener l) {
         if (!localFile.exists() || l == null) return;
         listener = l;
@@ -273,8 +283,13 @@ public class FaceDetect {
             case AndroidMedia:
                 BitmapFactory.Options mOptions = new BitmapFactory.Options();
                 mOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+                mOptions.inMutable = true;          // available api level >= 11
                 //要使用Android内置的人脸识别，需要将Bitmap对象转为RGB_565格式，否则无法识别
                 Bitmap mBitmap = BitmapFactory.decodeFile(localFile.getAbsolutePath(), mOptions);
+                // Bitmap to detect must has a even width
+                if (mBitmap.getWidth() % 2 == 1) {
+                    mBitmap = Bitmap.createScaledBitmap(mBitmap, mBitmap.getWidth() - 1, mBitmap.getHeight(), true);
+                }   
                 detectUsingNative(mBitmap);
                 break;
             case FacePlus:
@@ -286,6 +301,10 @@ public class FaceDetect {
 
     public void detectWithUrl(String url) {
 
+    }
+
+    public void setDetectProvider(DetectProvider detectProvider) {
+        this.detectProvider = detectProvider;
     }
 
     public SparseArray<Face> getDetectFaces() {
