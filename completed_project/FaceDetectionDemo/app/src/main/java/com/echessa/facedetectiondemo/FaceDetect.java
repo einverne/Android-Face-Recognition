@@ -4,6 +4,8 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.PointF;
+import android.graphics.RectF;
 import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
@@ -39,8 +41,10 @@ public class FaceDetect {
     private DetectListener listener;
 
     private int MEDIA_MAX_DETECT_FACE_NUMBER = 5;
+    private android.media.FaceDetector.Face androidNativeFacesResults[];
     private SparseArray<Face> faces;            // 保存GMS中返回数据
     private int facesCount;                     // 保存识别出的人脸数量
+
     private DetectProvider detectProvider = DetectProvider.AndroidMedia;              // 人脸识别提供商
 
     private FaceDetector detector;              // Play Service 人脸检测
@@ -140,12 +144,12 @@ public class FaceDetect {
         }
         facesCount = 0;
         final android.media.FaceDetector faceDetector = new android.media.FaceDetector(bitmap.getWidth(), bitmap.getHeight(), MEDIA_MAX_DETECT_FACE_NUMBER);
-        final android.media.FaceDetector.Face faces[] = new android.media.FaceDetector.Face[MEDIA_MAX_DETECT_FACE_NUMBER];
+        androidNativeFacesResults = new android.media.FaceDetector.Face[MEDIA_MAX_DETECT_FACE_NUMBER];
         final Handler handler = new Handler();
         thread = new Thread() {
             @Override
             public void run() {
-                facesCount = faceDetector.findFaces(bitmap, faces);
+                facesCount = faceDetector.findFaces(bitmap, androidNativeFacesResults);
 
                 handler.post(new Runnable() {
                     @Override
@@ -244,6 +248,44 @@ public class FaceDetect {
         isRunning = true;
     }
 
+    public int calculateInSampleSize(
+            BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        // Raw height and width of image
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while ((halfHeight / inSampleSize) >= reqHeight
+                    && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+
+        return inSampleSize;
+    }
+
+    private Bitmap decodeSampledBitmapFromFile(File filepath, int reqWidth, int reqHeight) {
+
+        // First decode with inJustDecodeBounds=true to check dimensions
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(filepath.getAbsolutePath(), options);
+
+        // Calculate inSampleSize
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+        // Decode bitmap with inSampleSize set
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(filepath.getAbsolutePath(), options);
+    }
+
     /**
      * 提供外部使用, 传入 Bitmap 检测
      *
@@ -289,7 +331,7 @@ public class FaceDetect {
                 // Bitmap to detect must has a even width
                 if (mBitmap.getWidth() % 2 == 1) {
                     mBitmap = Bitmap.createScaledBitmap(mBitmap, mBitmap.getWidth() - 1, mBitmap.getHeight(), true);
-                }   
+                }
                 detectUsingNative(mBitmap);
                 break;
             case FacePlus:
@@ -311,11 +353,43 @@ public class FaceDetect {
         return faces;
     }
 
+    /**
+     * Get the detect Face count
+     *
+     * @return count of faces detect
+     */
     public int getFacesCount() {
-        if (faces != null) {
-            return faces.size();
-        }
+        // deal the facesCount in each detect function
         return facesCount;
+    }
+
+    public android.media.FaceDetector.Face[] getAndroidMediaDetectResult() {
+        if (detectProvider == DetectProvider.AndroidMedia && androidNativeFacesResults != null) {
+            return androidNativeFacesResults;
+        }
+        return null;
+    }
+
+    public void getFacesArea() {
+        RectF rectf[] = new RectF[facesCount];
+        switch (detectProvider) {
+            case AndroidMedia:
+                for (int i = 0; i < androidNativeFacesResults.length; i++){
+                    android.media.FaceDetector.Face face = androidNativeFacesResults[0];
+                    if (face != null) {
+                        float eyeDistance = face.eyesDistance();
+                        PointF midEyesPoint = new PointF();
+                        face.getMidPoint(midEyesPoint);
+                        rectf[i].set(midEyesPoint.x - eyeDistance,
+                                midEyesPoint.y - eyeDistance,
+                                midEyesPoint.x + eyeDistance,
+                                midEyesPoint.y + eyeDistance);
+                    }
+                }
+                break;
+            default:
+
+        }
     }
 
     public boolean isGooglePlayServiceAvailable() {

@@ -1,5 +1,7 @@
 package com.echessa.facedetectiondemo;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -48,8 +50,9 @@ public class MainActivity extends AppCompatActivity {
     CustomView overlay;
     private int failedCount = 0;
 
+    private FaceDetect faceDetect;
     private ArrayList<File> picturesToDetect = new ArrayList<>();
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
         tvFaceCount = (TextView) findViewById(R.id.faceCount);
         tvPicIndex = (TextView) findViewById(R.id.picIndex);
         overlay = (CustomView) findViewById(R.id.customView);
+
+        faceDetect = new FaceDetect(getApplicationContext());
 
 //        InputStream stream = getResources().openRawResource(R.raw.image04);
 //        final Bitmap bitmap = BitmapFactory.decodeStream(stream);
@@ -86,7 +91,25 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(photoPickerIntent, SELECT_PHOTO);
                 break;
             case R.id.action_settings:
-
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Choose Detect Provider")
+                        .setItems(R.array.detector_provider_arrays, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case 0:
+                                        faceDetect.setDetectProvider(FaceDetect.DetectProvider.AndroidMedia);
+                                        break;
+                                    case 1:
+                                        faceDetect.setDetectProvider(FaceDetect.DetectProvider.PlayService);
+                                        break;
+                                    case 2:
+                                        faceDetect.setDetectProvider(FaceDetect.DetectProvider.FacePlus);
+                                        break;
+                                }
+                            }
+                        });
+                builder.create().show();
                 break;
             case R.id.action_opendir:
                 DialogProperties properties = new DialogProperties();
@@ -169,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void detectFaces(final File file) {
-        final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
         faceDetect.detectWithFile(file, new FaceDetect.DetectListener() {
             @Override
             public void onSuccess() {
