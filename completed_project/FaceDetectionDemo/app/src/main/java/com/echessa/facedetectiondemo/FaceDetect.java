@@ -317,11 +317,6 @@ public class FaceDetect {
         if (!localFile.exists() || l == null) return;
         listener = l;
         switch (detectProvider) {
-            case PlayService:
-                BitmapFactory.Options psOptions = new BitmapFactory.Options();
-                Bitmap psBitmap = BitmapFactory.decodeFile(localFile.getAbsolutePath(), psOptions);
-                detectUsingGms(psBitmap);
-                break;
             case AndroidMedia:
                 BitmapFactory.Options mOptions = new BitmapFactory.Options();
                 mOptions.inPreferredConfig = Bitmap.Config.RGB_565;
@@ -334,6 +329,11 @@ public class FaceDetect {
                 }
                 detectUsingNative(mBitmap);
                 break;
+            case PlayService:
+                BitmapFactory.Options psOptions = new BitmapFactory.Options();
+                Bitmap psBitmap = BitmapFactory.decodeFile(localFile.getAbsolutePath(), psOptions);
+                detectUsingGms(psBitmap);
+                break;
             case FacePlus:
                 detectUsingFacePlus(localFile);
 
@@ -343,6 +343,10 @@ public class FaceDetect {
 
     public void detectWithUrl(String url) {
 
+    }
+
+    public DetectProvider getDetectProvider() {
+        return detectProvider;
     }
 
     public void setDetectProvider(DetectProvider detectProvider) {
@@ -370,12 +374,13 @@ public class FaceDetect {
         return null;
     }
 
-    public void getFacesArea() {
-        RectF rectf[] = new RectF[facesCount];
+    public RectF[] getFacesArea() {
+        RectF[] rectf = new RectF[facesCount];
         switch (detectProvider) {
             case AndroidMedia:
-                for (int i = 0; i < androidNativeFacesResults.length; i++){
-                    android.media.FaceDetector.Face face = androidNativeFacesResults[0];
+                for (int i = 0; i < facesCount; i++) {
+                    rectf[i] = new RectF();
+                    android.media.FaceDetector.Face face = androidNativeFacesResults[i];
                     if (face != null) {
                         float eyeDistance = face.eyesDistance();
                         PointF midEyesPoint = new PointF();
@@ -390,6 +395,7 @@ public class FaceDetect {
             default:
 
         }
+        return rectf;
     }
 
     public boolean isGooglePlayServiceAvailable() {

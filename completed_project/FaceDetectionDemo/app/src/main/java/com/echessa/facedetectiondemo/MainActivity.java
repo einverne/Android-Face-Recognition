@@ -41,13 +41,12 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int SELECT_PHOTO = 100;
     private static final String TAG = "EV_TAG";
-    private ArrayList<File> pictures;
     private int faceCount = 0;
-    private Bitmap selectedBitmap;
 
+    TextView tvDetectProvider;
     TextView tvFaceCount;
     TextView tvPicIndex;
-    CustomView overlay;
+    DetectResultView overlay;
     private int failedCount = 0;
 
     private FaceDetect faceDetect;
@@ -58,9 +57,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        tvDetectProvider = (TextView) findViewById(R.id.tvDetectProvider);
         tvFaceCount = (TextView) findViewById(R.id.faceCount);
         tvPicIndex = (TextView) findViewById(R.id.picIndex);
-        overlay = (CustomView) findViewById(R.id.customView);
+        overlay = (DetectResultView) findViewById(R.id.customView);
 
         faceDetect = new FaceDetect(getApplicationContext());
 
@@ -91,11 +91,13 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(photoPickerIntent, SELECT_PHOTO);
                 break;
             case R.id.action_settings:
+                final String[] providerArrays = getResources().getStringArray(R.array.detector_provider_arrays);
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Choose Detect Provider")
                         .setItems(R.array.detector_provider_arrays, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
+                                tvDetectProvider.setText(providerArrays[which]);
                                 switch (which) {
                                     case 0:
                                         faceDetect.setDetectProvider(FaceDetect.DetectProvider.AndroidMedia);
@@ -168,14 +170,20 @@ public class MainActivity extends AppCompatActivity {
 //        final Bitmap bitmap = BitmapFactory.decodeFile(pic.getAbsolutePath(), options);
 
         tvFaceCount.setText("loading");
-        final FaceDetect faceDetect = new FaceDetect(getApplicationContext());
         faceDetect.detectWithFile(pic, new FaceDetect.DetectListener() {
             @Override
             public void onSuccess() {
-//                updateUI(bitmap, faces);
                 faceCount = faceDetect.getFacesCount();
                 tvFaceCount.setText("detect success face count: " + faceCount);
                 Log.d(TAG, "detect success face count " + faceCount);
+//                updateUI(bitmap, faces);
+                switch (faceDetect.getDetectProvider()) {
+                    case AndroidMedia:
+                        overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getFacesArea());
+                        break;
+                    case PlayService:
+                        overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getDetectFaces());
+                }
 //                if (faceCount == 0) {
 //                    saveToLocal("/sdcard/facedetectfailed", pic);
 //                } else {

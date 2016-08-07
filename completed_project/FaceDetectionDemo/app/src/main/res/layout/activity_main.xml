@@ -5,19 +5,25 @@
     tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/tvDetectProvider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <TextView
         android:id="@+id/faceCount"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tvDetectProvider"/>
 
     <TextView
         android:id="@+id/picIndex"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentRight="true" />
+        android:layout_below="@+id/faceCount" />
 
-    <com.echessa.facedetectiondemo.CustomView
+    <com.echessa.facedetectiondemo.DetectResultView
         android:id="@+id/customView"
-        android:layout_below="@+id/faceCount"
+        android:layout_below="@+id/picIndex"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

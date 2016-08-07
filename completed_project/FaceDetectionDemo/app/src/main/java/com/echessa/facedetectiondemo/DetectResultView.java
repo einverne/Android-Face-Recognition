@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.View;
@@ -16,12 +17,14 @@ import com.google.android.gms.vision.face.Landmark;
 /**
  * Created by echessa on 8/31/15.
  */
-public class CustomView extends View {
+public class DetectResultView extends View {
 
     private Bitmap mBitmap;
+    private FaceDetect.DetectProvider detectProvider;
     private SparseArray<Face> mFaces;
+    private RectF[] facesAreaRect;
 
-    public CustomView(Context context, AttributeSet attrs) {
+    public DetectResultView(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
@@ -30,7 +33,15 @@ public class CustomView extends View {
      */
     void setContent(Bitmap bitmap, SparseArray<Face> faces) {
         mBitmap = bitmap;
+        detectProvider = FaceDetect.DetectProvider.PlayService;
         mFaces = faces;
+        invalidate();
+    }
+
+    void setContent(Bitmap bitmap, RectF[] faces) {
+        mBitmap = bitmap;
+        detectProvider = FaceDetect.DetectProvider.AndroidMedia;
+        facesAreaRect = faces;
         invalidate();
     }
 
@@ -40,11 +51,15 @@ public class CustomView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if ((mBitmap != null) && (mFaces != null)) {
+//        if ((mBitmap != null) && (mFaces != null)) {
+//            double scale = drawBitmap(canvas);
+//            drawFaceRectangle(canvas, scale);
+////            drawFaceAnnotations(canvas, scale);
+//            detectFaceCharacteristics(canvas, scale);
+//        }
+        if (mBitmap != null && facesAreaRect != null) {
             double scale = drawBitmap(canvas);
             drawFaceRectangle(canvas, scale);
-//            drawFaceAnnotations(canvas, scale);
-            detectFaceCharacteristics(canvas, scale);
         }
     }
 
@@ -59,7 +74,7 @@ public class CustomView extends View {
         double imageHeight = mBitmap.getHeight();
         double scale = Math.min(viewWidth / imageWidth, viewHeight / imageHeight);
 
-        Rect destBounds = new Rect(0, 0, (int)(imageWidth * scale), (int)(imageHeight * scale));
+        Rect destBounds = new Rect(0, 0, (int) (imageWidth * scale), (int) (imageHeight * scale));
         canvas.drawBitmap(mBitmap, null, destBounds, null);
         return scale;
     }
@@ -73,20 +88,38 @@ public class CustomView extends View {
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(5);
 
-        for (int i = 0; i < mFaces.size(); ++i) {
-            Face face = mFaces.valueAt(i);
-            canvas.drawRect((float)(face.getPosition().x * scale),
-                    (float)(face.getPosition().y * scale),
-                    (float)((face.getPosition().x + face.getWidth()) * scale),
-                    (float)((face.getPosition().y + face.getHeight()) * scale),
-                    paint);
+        switch (detectProvider) {
+            case AndroidMedia:
+                for (RectF aFacesAreaRect : facesAreaRect) {
+                    canvas.drawRect(
+                            (float) (aFacesAreaRect.left * scale),
+                            (float) (aFacesAreaRect.top * scale),
+                            (float) (aFacesAreaRect.right * scale),
+                            (float) (aFacesAreaRect.bottom * scale),
+                            paint);
+                }
+                break;
+            case PlayService:
+                for (int i = 0; i < mFaces.size(); ++i) {
+                    Face face = mFaces.valueAt(i);
+                    canvas.drawRect((float) (face.getPosition().x * scale),
+                            (float) (face.getPosition().y * scale),
+                            (float) ((face.getPosition().x + face.getWidth()) * scale),
+                            (float) ((face.getPosition().y + face.getHeight()) * scale),
+                            paint);
+                }
+
+                break;
+            case FacePlus:
+
+                break;
         }
     }
 
     /**
      * Draws a small circle for each detected landmark, centered at the detected landmark position.
-     * <p>
-     *
+     * <p/>
+     * <p/>
      * Note that eye landmarks are defined to be the midpoint between the detected eye corner
      * positions, which tends to place the eye landmarks at the lower eyelid rather than at the
      * pupil position.
@@ -120,7 +153,7 @@ public class CustomView extends View {
 
         for (int i = 0; i < mFaces.size(); ++i) {
             Face face = mFaces.valueAt(i);
-            float cx = (float)(face.getPosition().x * scale);
+            float cx = (float) (face.getPosition().x * scale);
             float cy = (float) (face.getPosition().y * scale);
             canvas.drawText(String.valueOf(face.getIsSmilingProbability()), cx, cy + 10.0f, paint);
         }
