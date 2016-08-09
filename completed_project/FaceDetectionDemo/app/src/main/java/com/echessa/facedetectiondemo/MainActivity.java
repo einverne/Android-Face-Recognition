@@ -192,41 +192,21 @@ public class MainActivity extends AppCompatActivity {
 //                } else {
 //                    saveToLocal("/sdcard/facedetectsuccess", pic);
 //                }
-            }
-
-            @Override
-            public void onFail() {
-                tvFaceCount.setText("Failed");
-            }
-        });
-
-    }
-
-    private void detectFaces(final File file) {
-        faceDetect.detectWithFile(file, new FaceDetect.DetectListener() {
-            @Override
-            public void onSuccess() {
-
-                faceCount = faceDetect.getFacesCount();
-//                updateUI(bitmap, faces);
-
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         detectFaces();
                     }
                 }, 2000);
-//                if (faceCount == 0) {
-//                    saveToLocal(bitmap);
-//                }
-
             }
 
             @Override
             public void onFail() {
+                tvFaceCount.setText("Failed");
                 detectFaces();
             }
         });
+
     }
 
     // http://stackoverflow.com/questions/2507898/how-to-pick-an-image-from-gallery-sd-card-for-my-app
