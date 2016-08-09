@@ -176,13 +176,16 @@ public class MainActivity extends AppCompatActivity {
                 faceCount = faceDetect.getFacesCount();
                 tvFaceCount.setText("detect success face count: " + faceCount);
                 Log.d(TAG, "detect success face count " + faceCount);
-//                updateUI(bitmap, faces);
                 switch (faceDetect.getDetectProvider()) {
                     case AndroidMedia:
-                        overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getFacesArea());
+                        overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getFacesArea(), FaceDetect.DetectProvider.AndroidMedia);
                         break;
                     case PlayService:
                         overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getDetectFaces());
+                        break;
+                    case FacePlus:
+                        overlay.setContent(BitmapFactory.decodeFile(pic.getAbsolutePath()), faceDetect.getFacesArea(), FaceDetect.DetectProvider.FacePlus);
+                        break;
                 }
 //                if (faceCount == 0) {
 //                    saveToLocal("/sdcard/facedetectfailed", pic);
@@ -224,11 +227,6 @@ public class MainActivity extends AppCompatActivity {
                 detectFaces();
             }
         });
-    }
-
-    private void updateUI(final Bitmap bitmap, SparseArray<Face> faces) {
-        tvFaceCount.setText(faceCount + " faces detected");
-//        overlay.setContent(bitmap, faces);
     }
 
     // http://stackoverflow.com/questions/2507898/how-to-pick-an-image-from-gallery-sd-card-for-my-app

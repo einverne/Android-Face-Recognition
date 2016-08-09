@@ -43,6 +43,7 @@ public class FaceDetect {
     private int MEDIA_MAX_DETECT_FACE_NUMBER = 5;
     private android.media.FaceDetector.Face androidNativeFacesResults[];
     private SparseArray<Face> playServiceFaces;            // 保存GMS中返回数据
+    private RectF[] facePlusResults;
     private int facesCount;                     // 保存识别出的人脸数量
 
     private DetectProvider detectProvider = DetectProvider.AndroidMedia;              // 人脸识别提供商
@@ -197,10 +198,30 @@ public class FaceDetect {
                     if (result != null) {
                         detectSucceed = true;
                         JSONArray faces = result.getJSONArray("face");
+                        double imgWidth = result.getDouble("img_width");
+                        double imgHeight = result.getDouble("img_height");
                         if (faces != null && faces.length() > 0 && null != listener) {
                             // Has face!!
                             facesCount = faces.length();
+                            facePlusResults = new RectF[facesCount];
                             hasFace = true;
+                            for (int i = 0; i < facesCount; i++ ){
+                                float x, y, w, h;
+                                facePlusResults[i] = new RectF();
+                                // 需注意返回结果的center,width,height 都为0~100,百分比
+                                x = (float) faces.getJSONObject(i).getJSONObject("position").getJSONObject("center").getDouble("x");
+                                y = (float) faces.getJSONObject(i).getJSONObject("position").getJSONObject("center").getDouble("y");
+                                w = (float) faces.getJSONObject(i).getJSONObject("position").getDouble("width");
+                                h = (float) faces.getJSONObject(i).getJSONObject("position").getDouble("height");
+                                float realx = (float) (x * imgWidth / 100);
+                                float realy = (float) (y * imgHeight / 100);
+                                float realw = (float) (w * imgWidth / 100);
+                                float realh = (float) (h * imgHeight / 100);
+                                facePlusResults[i].set(realx - realw /2,
+                                        realy - realh / 2,
+                                        realx + realw / 2,
+                                        realy + realh / 2);
+                            }
 //                            String genderStr = playServiceFaces.getJSONObject(0).getJSONObject("attribute").getJSONObject("gender").getString("value");
 //                            gender = Gender.getValueOf(genderStr);
                         } else {
@@ -405,6 +426,9 @@ public class FaceDetect {
                                 leftTop.y + visionFace.getHeight());
                     }
                 }
+                break;
+            case FacePlus:
+                rectf = facePlusResults;
                 break;
             default:
 

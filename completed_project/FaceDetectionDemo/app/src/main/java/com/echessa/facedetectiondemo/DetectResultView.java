@@ -38,9 +38,9 @@ public class DetectResultView extends View {
         invalidate();
     }
 
-    void setContent(Bitmap bitmap, RectF[] faces) {
+    void setContent(Bitmap bitmap, RectF[] faces, FaceDetect.DetectProvider provider) {
         mBitmap = bitmap;
-        detectProvider = FaceDetect.DetectProvider.AndroidMedia;
+        detectProvider = provider;
         facesAreaRect = faces;
         invalidate();
     }
@@ -54,6 +54,7 @@ public class DetectResultView extends View {
         if (detectProvider == null) return;
         switch (detectProvider) {
             case AndroidMedia:
+            case FacePlus:
                 if (mBitmap != null && facesAreaRect != null) {
                     double scale = drawBitmap(canvas);
                     drawFaceRectangle(canvas, scale);
@@ -97,6 +98,7 @@ public class DetectResultView extends View {
 
         switch (detectProvider) {
             case AndroidMedia:
+            case FacePlus:
                 for (RectF aFacesAreaRect : facesAreaRect) {
                     canvas.drawRect(
                             (float) (aFacesAreaRect.left * scale),
@@ -115,9 +117,6 @@ public class DetectResultView extends View {
                             (float) ((face.getPosition().y + face.getHeight()) * scale),
                             paint);
                 }
-
-                break;
-            case FacePlus:
 
                 break;
         }
