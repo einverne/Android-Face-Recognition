@@ -102,6 +102,7 @@ public class FaceDetect {
         Frame frame = new Frame.Builder().setBitmap(bitmap).build();
 
         faces = safeDetector.detect(frame);
+        facesCount = faces.size();
 
         if (!safeDetector.isOperational()) {
             // Note: The first time that an app using face API is installed on a device, GMS will
