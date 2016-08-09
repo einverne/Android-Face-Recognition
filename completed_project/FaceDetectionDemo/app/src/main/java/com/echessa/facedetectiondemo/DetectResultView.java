@@ -51,15 +51,22 @@ public class DetectResultView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-//        if ((mBitmap != null) && (mFaces != null)) {
-//            double scale = drawBitmap(canvas);
-//            drawFaceRectangle(canvas, scale);
-////            drawFaceAnnotations(canvas, scale);
-//            detectFaceCharacteristics(canvas, scale);
-//        }
-        if (mBitmap != null && facesAreaRect != null) {
-            double scale = drawBitmap(canvas);
-            drawFaceRectangle(canvas, scale);
+        if (detectProvider == null) return;
+        switch (detectProvider) {
+            case AndroidMedia:
+                if (mBitmap != null && facesAreaRect != null) {
+                    double scale = drawBitmap(canvas);
+                    drawFaceRectangle(canvas, scale);
+                }
+                break;
+            case PlayService:
+                if ((mBitmap != null) && (mFaces != null)) {
+                    double scale = drawBitmap(canvas);
+                    drawFaceRectangle(canvas, scale);
+//            drawFaceAnnotations(canvas, scale);
+                    detectFaceCharacteristics(canvas, scale);
+                }
+                break;
         }
     }
 

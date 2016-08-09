@@ -42,7 +42,7 @@ public class FaceDetect {
 
     private int MEDIA_MAX_DETECT_FACE_NUMBER = 5;
     private android.media.FaceDetector.Face androidNativeFacesResults[];
-    private SparseArray<Face> faces;            // 保存GMS中返回数据
+    private SparseArray<Face> playServiceFaces;            // 保存GMS中返回数据
     private int facesCount;                     // 保存识别出的人脸数量
 
     private DetectProvider detectProvider = DetectProvider.AndroidMedia;              // 人脸识别提供商
@@ -101,14 +101,14 @@ public class FaceDetect {
         // Create a frame from the bitmap and run face detection on the frame.
         Frame frame = new Frame.Builder().setBitmap(bitmap).build();
 
-        faces = safeDetector.detect(frame);
-        facesCount = faces.size();
+        playServiceFaces = safeDetector.detect(frame);
+        facesCount = playServiceFaces.size();
 
         if (!safeDetector.isOperational()) {
             // Note: The first time that an app using face API is installed on a device, GMS will
             // download a native library to the device in order to do detection.  Usually this
             // completes before the app is run for the first time.  But if that download has not yet
-            // completed, then the above call will not detect any faces.
+            // completed, then the above call will not detect any playServiceFaces.
             //
             // isOperational() can be used to check if the required native library is currently
             // available.  The detector will automatically become operational once the library
@@ -201,7 +201,7 @@ public class FaceDetect {
                             // Has face!!
                             facesCount = faces.length();
                             hasFace = true;
-//                            String genderStr = faces.getJSONObject(0).getJSONObject("attribute").getJSONObject("gender").getString("value");
+//                            String genderStr = playServiceFaces.getJSONObject(0).getJSONObject("attribute").getJSONObject("gender").getString("value");
 //                            gender = Gender.getValueOf(genderStr);
                         } else {
                             hasFace = false;
@@ -355,13 +355,13 @@ public class FaceDetect {
     }
 
     public SparseArray<Face> getDetectFaces() {
-        return faces;
+        return playServiceFaces;
     }
 
     /**
      * Get the detect Face count
      *
-     * @return count of faces detect
+     * @return count of playServiceFaces detect
      */
     public int getFacesCount() {
         // deal the facesCount in each detect function
@@ -390,6 +390,19 @@ public class FaceDetect {
                                 midEyesPoint.y - eyeDistance,
                                 midEyesPoint.x + eyeDistance,
                                 midEyesPoint.y + eyeDistance);
+                    }
+                }
+                break;
+            case PlayService:
+                for (int i = 0; i < facesCount; i++) {
+                    rectf[i] = new RectF();
+                    Face visionFace = playServiceFaces.get(i);
+                    if (visionFace != null) {
+                        PointF leftTop = visionFace.getPosition();
+                        rectf[i].set(leftTop.x,
+                                leftTop.y,
+                                leftTop.x + visionFace.getWidth(),
+                                leftTop.y + visionFace.getHeight());
                     }
                 }
                 break;
