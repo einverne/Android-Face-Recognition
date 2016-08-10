@@ -33,8 +33,8 @@ import java.io.File;
  */
 
 public class FaceDetect {
-    private static final String FACEPLUSPLUS_APIKEY = "c659ff0d3a08601d115cf34035e53d5e";
-    private static final String FACEPLUSPLUS_APISECRET = "JzDjJ8QDjouiwDkDSTV4KYd8yrXcf01m";
+    private static final String FACEPLUSPLUS_APIKEY = "d6d164ec922216487992098be53274bb";
+    private static final String FACEPLUSPLUS_APISECRET = "v0MZs-3dCgQyEmQWr7b87lAmhg7ReYeq";
 
     private static final String TAG = "EV_TAG";
     private Context context;                    // used by Play Service
