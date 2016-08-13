@@ -191,7 +191,7 @@ public class FaceDetect {
                 boolean hasFace = false;
                 boolean detectSucceed = false;
                 Log.d("FacePlusDetect", "Detect Request :" + parameters.toString());
-                HttpRequests httpRequests = new HttpRequests(FACEPLUSPLUS_APIKEY, FACEPLUSPLUS_APISECRET, false, true);
+                HttpRequests httpRequests = new HttpRequests(FACEPLUSPLUS_APIKEY, FACEPLUSPLUS_APISECRET, true, true);
                 JSONObject result;
                 try {
                     result = httpRequests.detectionDetect(parameters);
